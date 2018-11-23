@@ -20,4 +20,7 @@ verdaccio &
 sleep 3
 
 # Build Theia with all the extensions
-cd ${HOME} && yarn && yarn theia build
+cd ${HOME} && npm install html-webpack-plugin@^3.2.0 yargs@^12.0.4
+cd ${HOME} && yarn && yarn theia build --config customization/custom.webpack.config.js --env.cdn="${CDN_PREFIX:-}" --env.monacocdn=https://cdn.jsdelivr.net/npm/@typefox/monaco-editor-core@0.14.6/min/
+mv ${HOME}/lib/vs/loader.js ${HOME}/lib/vs/original-loader.js
+mv ${HOME}/customization/vs-loader.js ${HOME}/lib/vs/loader.js

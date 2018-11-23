@@ -1,0 +1,160 @@
+<%
+const cdnPrefix = htmlWebpackPlugin.options.customparams.cdnPrefix ? htmlWebpackPlugin.options.customparams.cdnPrefix : '';
+const monacoCdnPrefix = htmlWebpackPlugin.options.customparams.monacoCdnPrefix ? htmlWebpackPlugin.options.customparams.monacoCdnPrefix : '';
+
+const vsLoader = './vs/original-loader.js';
+const vsLoaderCdn = monacoCdnPrefix + 'vs/loader.js';
+
+const mainEditorFile = 'vs/editor/editor.main';
+
+const chunks = [];
+for (key in htmlWebpackPlugin.files.chunks) {
+  const url = htmlWebpackPlugin.files.chunks[key].entry;
+  const chunk = {
+    "chunk": url
+  };
+
+  if (cdnPrefix) {
+    if (url.match(/^(main|vendors)\.[^.]+\.js$/)) {
+        chunk["cdn"] = cdnPrefix + url;
+    }
+  }
+  chunks.push(chunk);
+}
+
+const cachedResourceFiles = [];
+if (cdnPrefix) {
+  for (asset in compilation.assets) {
+    if (asset.endsWith('.wasm') || asset.endsWith('.woff2') || asset.endsWith('.gif')) {
+      cachedResourceFiles.push({
+        "resource": asset,
+        "cdn": cdnPrefix + asset
+      });
+    }
+  }
+}
+
+if (cdnPrefix || monacoCdnPrefix) {
+  const monacoFiles = [ '.js', '.css', '.nls.js' ]
+  .map((ext) => mainEditorFile + ext)
+  .map((url) => {
+    return {
+      "external": url,
+      "cdn": monacoCdnPrefix + url
+    };
+  });
+  monacoFiles.push({
+    "external": vsLoader,
+    "cdn": vsLoaderCdn
+  });
+
+  const fs = require('fs');
+  fs.writeFile("lib/cdn.json", JSON.stringify(
+    chunks.concat(monacoFiles).concat(cachedResourceFiles).filter((url) => url.cdn),
+    undefined, 2));
+}
+
+%>
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <script type="text/javascript">
+    function checkURL(url, fallback) {
+        var result = fallback;
+        if (! window.location.search.match(/^.*\?noCDN(&.+)?$/)) {
+            const request = new XMLHttpRequest();
+            request.onload = function() {
+                if (this.status >= 200 && this.status < 300 || this.status === 304) {
+                    result = url;
+                }
+            };
+            request.open("HEAD", url, false);
+            request.send();
+        }
+        return result;
+    }
+
+    function checkCDN(json) {
+      const urlEntry = JSON.parse(json);
+      if (! urlEntry.cdn) {
+          return urlEntry.chunk || urlEntry.resource;
+      }
+      return checkURL(urlEntry.cdn, urlEntry.chunk || urlEntry.resource);
+    }
+  
+    function doCallVsLoaderPrefixForChe(context, vsLoader, vsLoaderCdn, mainEditorFile, monacoCdnPrefix) {
+      const loaderURL = checkURL(vsLoaderCdn, vsLoader);
+      const request = new XMLHttpRequest();
+      request.open('GET', loaderURL, false);
+      request.send();
+      eval(request.responseText);
+      if (monacoCdnPrefix) {
+        vsRequire = context.require;
+        const pathsWithCdns = {}
+        const pathsWithoutCdns = {}
+        pathsWithCdns[mainEditorFile] = monacoCdnPrefix + mainEditorFile;
+        pathsWithoutCdns[mainEditorFile] = mainEditorFile;
+        const overridePaths = () => vsRequire.config({
+            paths: pathsWithCdns
+        });
+        const restorePaths = () => vsRequire.config({
+            paths: pathsWithoutCdns
+        });
+        context.require = (mods, onload) => {
+            if (Array.isArray(mods) && mods[0] && mods[0] == mainEditorFile) {
+                overridePaths();
+                vsRequire([mainEditorFile],
+                    () => {
+                        restorePaths();
+                        onload();
+                    },
+                    () => {
+                        restorePaths();
+                        vsRequire.reset();
+                        vsRequire([mainEditorFile], callback);
+                    }
+                );
+            } else {
+                vsRequire(mods, onload);
+            }
+        }
+      }
+    }
+  </script>
+  <script type="text/javascript">
+    window.replaceDependencyWithCdnForChe = function(originalSrc) {<%
+cachedResourceFiles.forEach((resource) => { %>
+      if (originalSrc == '<%= resource.resource %>') {
+        return checkURL('<%= resource.cdn %>', '<%= resource.resource %>');
+      } <%
+}); %>
+      return originalSrc;
+    }
+      
+    function callVsLoaderForChe(context) {
+      doCallVsLoaderPrefixForChe(context, '<%= vsLoader %>', '<%= vsLoaderCdn %>', '<%= mainEditorFile %>', '<%= monacoCdnPrefix %>');
+    }
+    
+    [<% chunks.map((chunk) => { %>
+        checkCDN('<%= JSON.stringify(chunk) %>'),
+     <% }) %>
+    ].forEach((url)=>{
+        var script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.defer = true;
+        script.crossOrigin="anonymous";
+        script.charset = "utf-8";
+        document.head.append(script);
+    });
+  </script>
+</head>
+
+<body>
+  <div class="theia-preload"></div>
+</body>
+
+</html>
