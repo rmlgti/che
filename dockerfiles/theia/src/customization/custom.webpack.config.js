@@ -1,9 +1,8 @@
 // @ts-check
 const path = require('path');
-const baseConfig = require('../webpack.config');
-
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+
 const yargs = require('yargs');
 const { env: { cdn, monacocdn } }  = yargs.option('env.cdn', {
     description: "base URL of the CDN that will host theia files",
@@ -15,9 +14,24 @@ const { env: { cdn, monacocdn } }  = yargs.option('env.cdn', {
     default: ''
 }).argv;
 
-module.exports = baseConfig;
+// Retrieve the default, generated, Theia Webpack configuration
+const baseConfig = require('../webpack.config');
 
-module.exports.optimization = {
+// Add the cdn-support.js file at the beginning of the entries.
+// It contains the logic to load various types of files from the configured CDN
+// if available, or fallback to the local file
+const originalEntry = baseConfig.entry;
+baseConfig.entry = {
+    "cdn-support": path.resolve(__dirname, 'cdn-support.js'),
+    "main": originalEntry
+};
+
+// Include the content hash to enable long-term caching
+baseConfig.output.filename = '[name].[contenthash].js';
+
+// Separate the webpack runtime module, theia modules, external vendor modules
+// in 3 distinct chhunks to optimize caching management
+baseConfig.optimization = {
     runtimeChunk: 'single',
     splitChunks: {
       cacheGroups: {
@@ -30,8 +44,14 @@ module.exports.optimization = {
     }
 };
 
-module.exports.output.filename = '[name].[contenthash].js';
-module.exports.plugins.unshift(new HtmlWebpackPlugin({
+// Use hashed module IDs to ease caching support
+// and avoid the hash-based chunk names being changed
+// unexpectedly
+baseConfig.plugins.push(new webpack.HashedModuleIdsPlugin());
+
+// Use our own HTML template to trigger the CDN-supporting
+// logic, with the CDN prefixes passed as env parameters
+baseConfig.plugins.unshift(new HtmlWebpackPlugin({
     filename: 'index.html',
     template: 'customization/custom-html.html',
     inject: false,
@@ -40,8 +60,10 @@ module.exports.plugins.unshift(new HtmlWebpackPlugin({
         monacoCdnPrefix: monacocdn
     }
 }));
-module.exports.plugins.unshift(new webpack.HashedModuleIdsPlugin());
-module.exports.module.rules.filter((rule) => rule.loader && rule.loader.match(/(file-loader|url-loader)/))
+
+// Insert a custom loader to override file and url loaders,
+// in order to insert CDN-related logic
+baseConfig.module.rules.filter((rule) => rule.loader && rule.loader.match(/(file-loader|url-loader)/))
 .forEach((rule) => {
     const originalLoader = {
       loader: rule.loader
@@ -60,3 +82,6 @@ module.exports.module.rules.filter((rule) => rule.loader && rule.loader.match(/(
       originalLoader
     ];
 });
+
+// Export the customized webpack configuration object
+module.exports = baseConfig;

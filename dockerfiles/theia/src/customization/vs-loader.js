@@ -1,1 +1,1 @@
-callVsLoaderForChe(window);
+cheCDN.vsLoader(window);
