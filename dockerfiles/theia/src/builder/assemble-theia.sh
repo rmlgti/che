@@ -20,6 +20,22 @@ verdaccio &
 sleep 3
 
 # Build Theia with all the extensions
-cd ${HOME} && yarn && yarn theia build --config customization/custom.webpack.config.js --env.cdn="${CDN_PREFIX:-}" --env.monacocdn=https://cdn.jsdelivr.net/npm/@typefox/monaco-editor-core@0.14.6/min/
+cd ${HOME} && yarn
+MONACO_EDITOR_PACKAGE=$(yarn --json --non-interactive --no-progress list --pattern=@typefox/monaco-editor-core | jq --raw-output '.data.trees[0].name')
+if [[ "$MONACO_CDN_PREFIX" == "" ]]; then
+  MONACO_CDN=""
+else
+  case "${MONACO_EDITOR_PACKAGE}" in
+  @typefox/monaco-editor-core@*)
+    MONACO_CDN="${MONACO_CDN_PREFIX}${MONACO_EDITOR_PACKAGE}/min/";
+    break
+    ;;
+  *)
+    echo "Monaco editor core version not found !"
+    exit 1
+    ;;
+  esac  
+fi
+yarn theia build --config customization/custom.webpack.config.js --env.cdn="${CDN_PREFIX:-}" --env.monacocdn="${MONACO_CDN}"
 mv ${HOME}/lib/vs/loader.js ${HOME}/lib/vs/original-loader.js
 mv ${HOME}/customization/vs-loader.js ${HOME}/lib/vs/loader.js

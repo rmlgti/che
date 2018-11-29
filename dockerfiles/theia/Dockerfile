@@ -57,6 +57,7 @@ RUN /tmp/builder/scripts/add-extensions.sh
 
 # Assemble theia
 ARG CDN_PREFIX
+ARG MONACO_CDN_PREFIX
 ADD src/customization ${HOME}/customization
 ADD src/builder/assemble-theia.sh /tmp/builder/scripts/assemble-theia.sh
 RUN /tmp/builder/scripts/assemble-theia.sh
