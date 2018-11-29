@@ -18,5 +18,9 @@ for file in $(jq --raw-output '.[] | select((has("cdn")) and (has("external")|no
 do
   mkdir -p $destination/$(dirname "$file")
   docker cp $container:/home/theia/lib/$file $destination/$file
+  if [[ "$file" == *.*.js ]]
+  then
+    docker cp $container:/home/theia/lib/$file.map $destination/$file.map
+  fi
 done
 docker rm $container
