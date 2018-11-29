@@ -1,6 +1,7 @@
 // @ts-check
 const path = require('path');
 const webpack = require('webpack');
+const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const yargs = require('yargs');
@@ -23,11 +24,14 @@ const baseConfig = require('../webpack.config');
 const originalEntry = baseConfig.entry;
 baseConfig.entry = {
     "cdn-support": path.resolve(__dirname, 'cdn-support.js'),
-    "main": originalEntry
+    "theia": originalEntry
 };
 
 // Include the content hash to enable long-term caching
 baseConfig.output.filename = '[name].[contenthash].js';
+
+const extensions = JSON.parse(fs.readFileSync('extensions.json', 'utf8'))
+  .extensions.map((entry) => entry.name);
 
 // Separate the webpack runtime module, theia modules, external vendor modules
 // in 3 distinct chhunks to optimize caching management
@@ -35,10 +39,22 @@ baseConfig.optimization = {
     runtimeChunk: 'single',
     splitChunks: {
       cacheGroups: {
-        commons: {
+        che: {
+          test (module, chunks) {
+            var req = module.userRequest;
+            return req && (req.endsWith('/src-gen/frontend/index.js') ||
+            extensions.some((name) => req.includes('/'+name+'/')));
+          },
+          name: 'che',
+          chunks: 'all',
+          enforce: true,
+          priority: 1
+        },
+        vendors: {
           test: /[\/]node_modules[\/](?!@theia[\/])/,
           name: 'vendors',
-          chunks: 'all'
+          chunks: 'all',
+          enforce: true
         }
       }
     }
@@ -57,7 +73,9 @@ baseConfig.plugins.unshift(new HtmlWebpackPlugin({
     inject: false,
     customparams: {
         cdnPrefix: cdn,
-        monacoCdnPrefix: monacocdn
+        monacoCdnPrefix: monacocdn,
+        cachedChunkRegexp: '^(theia|che|vendors)\.[^.]+\.js$',
+        cachedResourceRegexp: '^.*\.(wasm|woff2|gif)$'
     }
 }));
 

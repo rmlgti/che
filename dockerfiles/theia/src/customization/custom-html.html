@@ -9,13 +9,16 @@ const mainEditorFile = 'vs/editor/editor.main';
 
 const nocacheChunks = [];
 const cachedChunks = [];
+const cachedChunkRegexp = new RegExp(htmlWebpackPlugin.options.customparams.cachedChunkRegexp);
+const cachedResourceRegexp = new RegExp(htmlWebpackPlugin.options.customparams.cachedResourceRegexp);
+
 for (key in htmlWebpackPlugin.files.chunks) {
   const url = htmlWebpackPlugin.files.chunks[key].entry;
   const chunk = {
     "chunk": url
   };
 
-  if (cdnPrefix && url.match(/^(main|vendors)\.[^.]+\.js$/)) {
+  if (cdnPrefix && url.match(cachedChunkRegexp)) {
     chunk["cdn"] = cdnPrefix + url;
     cachedChunks.push(chunk);
   } else {
@@ -26,7 +29,7 @@ for (key in htmlWebpackPlugin.files.chunks) {
 const cachedResourceFiles = [];
 if (cdnPrefix) {
   for (asset in compilation.assets) {
-    if (asset.endsWith('.wasm') || asset.endsWith('.woff2') || asset.endsWith('.gif')) {
+    if (asset.match(cachedResourceRegexp)) {
       cachedResourceFiles.push({
         "resource": asset,
         "cdn": cdnPrefix + asset
