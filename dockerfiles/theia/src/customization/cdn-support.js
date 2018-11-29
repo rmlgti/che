@@ -1,10 +1,11 @@
 module.exports = function() {
-  var global = typeof window === 'undefined' ? {} : window;
+  const global = typeof window === 'undefined' ? {} : window;
   global.cheCDN = {
+      noCDN: global.location ? global.location.search.match(/^.*\?noCDN(&.+)?$/) : false,
       chunks: [],
       resources: [],
       monaco: {},
-      buildScripts: function() {
+      buildScripts() {
         this.chunks.map((entry) => this.url(entry.cdn, entry.chunk ))
         .forEach((url)=>{
           var script = document.createElement('script');
@@ -16,9 +17,9 @@ module.exports = function() {
           document.head.append(script);
         });
       },
-      url: function(onCDN, fallback) {
+      url(onCDN, fallback) {
         var result = fallback;
-        if (! global.location.search.match(/^.*\?noCDN(&.+)?$/)) {
+        if (! this.noCDN) {
           const request = new XMLHttpRequest();
           request.onload = function() {
             if (this.status >= 200 && this.status < 300 || this.status === 304) {
@@ -31,7 +32,7 @@ module.exports = function() {
         return result;
       },
 
-      resourceUrl: function(path) {
+      resourceUrl(path) {
         var cached = this.resources.find((entry) => entry.resource == path);
         if (cached) {
           return this.url(cached.cdn, cached.resource);
@@ -39,7 +40,7 @@ module.exports = function() {
         return path;
       },
 
-      vsLoader: function(context) {
+      vsLoader(context) {
         const loaderURL = this.url(this.monaco.vsLoaderCdn, this.monaco.vsLoader);
         const request = new XMLHttpRequest();
         request.open('GET', loaderURL, false);
