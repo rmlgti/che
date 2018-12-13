@@ -38,6 +38,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
+import joptsimple.internal.Strings;
 import org.eclipse.che.api.core.BadRequestException;
 import org.eclipse.che.api.core.ConflictException;
 import org.eclipse.che.api.core.NotFoundException;
@@ -45,6 +46,7 @@ import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.ValidationException;
 import org.eclipse.che.api.core.rest.Service;
 import org.eclipse.che.api.devfile.model.Devfile;
+import org.eclipse.che.api.devfile.server.remote.RemoteDevfileRetriever;
 import org.eclipse.che.api.workspace.server.WorkspaceLinksGenerator;
 import org.eclipse.che.api.workspace.server.WorkspaceManager;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceConfigImpl;
@@ -62,17 +64,20 @@ public class DevfileService extends Service {
   private WorkspaceManager workspaceManager;
   private ObjectMapper objectMapper;
   private DevfileConverter devfileConverter;
+  private RemoteDevfileRetriever remoteDevfileRetriever;
 
   @Inject
   public DevfileService(
       WorkspaceLinksGenerator linksGenerator,
       DevfileSchemaValidator schemaValidator,
       DevfileSchemaProvider schemaCachedProvider,
-      WorkspaceManager workspaceManager) {
+      WorkspaceManager workspaceManager,
+      RemoteDevfileRetriever remoteDevfileRetriever) {
     this.linksGenerator = linksGenerator;
     this.schemaValidator = schemaValidator;
     this.schemaCachedProvider = schemaCachedProvider;
     this.workspaceManager = workspaceManager;
+    this.remoteDevfileRetriever = remoteDevfileRetriever;
     this.objectMapper = new ObjectMapper(new YAMLFactory());
     this.devfileConverter = new DevfileConverter();
   }
@@ -83,6 +88,7 @@ public class DevfileService extends Service {
    * @return json schema
    */
   @GET
+  @Path("/schema")
   @Produces(APPLICATION_JSON)
   @ApiOperation(value = "Retrieves current version of devfile JSON schema")
   @ApiResponses({
@@ -94,6 +100,36 @@ public class DevfileService extends Service {
       return Response.ok(schemaCachedProvider.getSchemaContent()).build();
     } catch (IOException e) {
       throw new ServerException(e);
+    }
+  }
+
+  @GET
+  @Produces(APPLICATION_JSON)
+  public Response create(
+      @DefaultValue("repo") @QueryParam("mode") String mode,
+      @QueryParam("url") String url,
+      @DefaultValue("master") @QueryParam("branch") String branchName,
+      @DefaultValue("verbose") @QueryParam("verbose") boolean verbose)
+      throws ServerException, BadRequestException, ConflictException, NotFoundException,
+          ValidationException {
+    if (Strings.isNullOrEmpty(url)) {
+      throw new BadRequestException("URL of the repository or raw devfile must be specified.");
+    }
+    try {
+      String yamlContent;
+      switch(mode) {
+        case "repo":
+            yamlContent = remoteDevfileRetriever.fromRepoUrl(url, branchName);
+            break;
+        case "raw":
+             yamlContent = remoteDevfileRetriever.fromRawUrl(url);
+             break;
+        default:
+          throw new BadRequestException("Incorrect mode specified");
+      }
+      return createFromYaml(yamlContent, verbose);
+    } catch (IOException e) {
+      throw new ServerException(e.getMessage());
     }
   }
 

@@ -36,6 +36,7 @@ import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.model.workspace.WorkspaceConfig;
 import org.eclipse.che.api.core.model.workspace.WorkspaceStatus;
 import org.eclipse.che.api.devfile.model.Devfile;
+import org.eclipse.che.api.devfile.server.remote.RemoteDevfileRetriever;
 import org.eclipse.che.api.workspace.server.WorkspaceLinksGenerator;
 import org.eclipse.che.api.workspace.server.WorkspaceManager;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceConfigImpl;
@@ -64,6 +65,7 @@ public class DevfileServiceTest {
 
   @Mock private WorkspaceManager workspaceManager;
   @Mock private EnvironmentContext environmentContext;
+  @Mock private RemoteDevfileRetriever remoteDevfileRetriever;
   private DevfileSchemaProvider schemaProvider = new DevfileSchemaProvider();
   private DevfileSchemaValidator validator;
 
@@ -79,7 +81,8 @@ public class DevfileServiceTest {
   public void initService() throws IOException {
     this.validator = spy(new DevfileSchemaValidator(schemaProvider));
     this.devFileService =
-        new DevfileService(linksGenerator, validator, schemaProvider, workspaceManager);
+        new DevfileService(
+            linksGenerator, validator, schemaProvider, workspaceManager, remoteDevfileRetriever);
   }
 
   @Test
@@ -89,7 +92,7 @@ public class DevfileServiceTest {
             .auth()
             .basic(ADMIN_USER_NAME, ADMIN_USER_PASSWORD)
             .when()
-            .get(SECURE_PATH + "/devfile");
+            .get(SECURE_PATH + "/devfile/schema");
 
     assertEquals(response.getStatusCode(), 200);
     assertEquals(response.getBody().asString(), schemaProvider.getSchemaContent());

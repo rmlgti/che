@@ -45,6 +45,7 @@ public class DevfilePermissionsFilter extends CheMethodInvokerFilter {
     switch (methodName) {
         // public methods
       case "getSchema":
+      case "create":
       case "createFromYaml":
         return;
       case "createFromWorkspace":
