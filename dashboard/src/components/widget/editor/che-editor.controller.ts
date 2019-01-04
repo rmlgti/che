@@ -144,7 +144,7 @@ export class CheEditorController {
             }
 
             this.editorForm.$setValidity('custom-validator', this.editorState.isValid, null);
-          }, 2500);
+          }, 500);
         });
       }
     };

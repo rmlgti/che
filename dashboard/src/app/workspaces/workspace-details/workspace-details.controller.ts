@@ -290,7 +290,20 @@ export class WorkspaceDetailsController {
     }
 
     this.workspaceDetails.config = config;
-    this.checkEditMode();
+    
+
+    if (!this.originWorkspaceDetails || !this.workspaceDetails) {
+      return;
+    }
+
+    // check for failed tabs
+    const failedTabs = this.checkForFailedTabs();
+    // publish changes
+    this.workspaceDetailsService.publishWorkspaceChange(this.workspaceDetails);
+    
+    if (!failedTabs || failedTabs.length === 0) {
+      this.saveConfigChanges();
+    }
   }
 
   /**
