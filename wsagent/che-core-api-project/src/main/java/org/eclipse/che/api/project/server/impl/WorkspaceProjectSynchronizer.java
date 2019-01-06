@@ -126,6 +126,7 @@ public class WorkspaceProjectSynchronizer implements ProjectSynchronizer, Worksp
   public Set<ProjectConfig> getProjects() throws ServerException {
 
     WorkspaceConfig config = workspaceDto().getConfig();
+    LOG.info("WorkspaceConfig {} ", config);
     Set<ProjectConfig> projectConfigs = new HashSet<>(config.getProjects());
 
     return unmodifiableSet(projectConfigs);
@@ -145,7 +146,7 @@ public class WorkspaceProjectSynchronizer implements ProjectSynchronizer, Worksp
   }
 
   @Override
-  public Runtime getRuntime() throws ServerException {
+  public Runtime getRuntime() {
     return workspaceRuntime;
   }
 

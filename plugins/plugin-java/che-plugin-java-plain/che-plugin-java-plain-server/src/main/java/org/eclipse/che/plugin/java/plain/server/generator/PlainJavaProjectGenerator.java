@@ -121,6 +121,11 @@ public class PlainJavaProjectGenerator implements CreateProjectHandler {
     ProjectConfig projectConfig = event.getProjectConfig();
     String projectWsPath = projectConfig.getPath();
     String oldClasspathWsPath = projectWsPath + "/.che/classpath";
+    LOG.info(
+        "onPreProjectInitializedEvent {} {}",
+        projectConfig,
+        projectConfig.getClass(),
+        projectConfig.getType());
     if (projectConfig.getType().equals(JAVAC) && fsManager.exists(oldClasspathWsPath)) {
       try {
         fsManager.move(oldClasspathWsPath, projectWsPath + "/.classpath");

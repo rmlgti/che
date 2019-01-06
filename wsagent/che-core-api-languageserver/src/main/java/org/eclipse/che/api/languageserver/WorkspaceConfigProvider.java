@@ -28,7 +28,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.model.workspace.Runtime;
 import org.eclipse.che.api.core.model.workspace.runtime.Machine;
 import org.eclipse.che.api.core.model.workspace.runtime.Server;
@@ -58,8 +57,7 @@ class WorkspaceConfigProvider implements LanguageServerConfigProvider {
       WorkspaceProjectSynchronizer workspace,
       JsonParser jsonParser,
       GuiceConfigProvider guiceConfigProvider,
-      RootDirPathProvider rootDirPathProvider)
-      throws ServerException {
+      RootDirPathProvider rootDirPathProvider) {
 
     this.workspaceRuntime = workspace.getRuntime();
     this.configExtractor = new ConfigExtractor(jsonParser);

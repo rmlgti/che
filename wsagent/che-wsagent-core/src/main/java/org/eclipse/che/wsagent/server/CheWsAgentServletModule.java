@@ -11,6 +11,7 @@
  */
 package org.eclipse.che.wsagent.server;
 
+import com.google.common.base.MoreObjects;
 import com.google.inject.servlet.ServletModule;
 import org.eclipse.che.api.core.cors.CheCorsFilter;
 import org.eclipse.che.inject.DynaModule;
@@ -35,7 +36,10 @@ public class CheWsAgentServletModule extends ServletModule {
   }
 
   private boolean isCheCorsEnabled() {
-    String cheCorsEnabledEnvVar = System.getenv("CHE_WSAGENT_CORS_ENABLED");
+    String cheCorsEnabledEnvVar =
+        MoreObjects.firstNonNull(
+            System.getenv("CHE_WSAGENT_CORS_ENABLED_OVERRIDE"),
+            System.getenv("CHE_WSAGENT_CORS_ENABLED"));
     if (cheCorsEnabledEnvVar == null) {
       // by default CORS should be enabled
       return true;

@@ -20,6 +20,7 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.catalina.filters.CorsFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,7 @@ public class CheCorsFilter implements Filter {
     corsFilter = new CorsFilter();
 
     corsFilter.init(cheCorsFilterConfig);
-    LOG.debug(
+    LOG.info(
         "CORS initialized with parameters: 'cors.support.credentials': '{}', 'cors.allowed.origins': '{}'",
         cheCorsFilterConfig.getInitParameter("cors.support.credentials"),
         cheCorsFilterConfig.getInitParameter("cors.allowed.origins"));
@@ -55,7 +56,13 @@ public class CheCorsFilter implements Filter {
   public void doFilter(
       ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
       throws IOException, ServletException {
-    corsFilter.doFilter(servletRequest, servletResponse, filterChain);
+    LOG.info("Before request {} ", ((HttpServletRequest) servletRequest).getRequestURI());
+    try {
+      corsFilter.doFilter(servletRequest, servletResponse, filterChain);
+    } catch (Exception e) {
+      LOG.error(e.getLocalizedMessage(), e);
+    }
+    LOG.info("After request {} ", ((HttpServletRequest) servletRequest).getRequestURI());
   }
 
   @Override
